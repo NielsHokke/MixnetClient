@@ -84,7 +84,7 @@ print('network_message:', ''.join('{: 02x}'.format(x) for x in network_message))
 
 
 clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-clientsocket.connect(('pets.ewi.utwente.nl', 56180))
+clientsocket.connect(('pets.ewi.utwente.nl', 57663))
 clientsocket.send(network_message)
-
+print(clientsocket.recv(1024))
 print("Done!")
