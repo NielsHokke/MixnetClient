@@ -21,13 +21,14 @@ def getPK(Path):
 	if isinstance(PK, rsa.RSAPublicKey):
 		return PK
 	else:
+		print("Error reading RSA-Key from " + Path)
 		return None
 
 
 def layer(PK, data):
 	key1 = os.urandom(16)
 	iv1 = os.urandom(16)
-	Key_iv1 = key1 + iv1
+	IV_KEY = iv1 + key1
 
 	cipher = Cipher(algorithms.AES(key1), modes.CBC(iv1), backend=default_backend())
 	encryptor = cipher.encryptor()
@@ -42,7 +43,7 @@ def layer(PK, data):
 		AES_ct = encryptor.update(padded_data) + encryptor.finalize()
 
 	RSA_ct = PK.encrypt(
-		Key_iv1,
+		IV_KEY,
 		padding.OAEP(
 			mgf=padding.MGF1(algorithm=hashes.SHA256()),
 			algorithm=hashes.SHA256(),
@@ -62,16 +63,20 @@ recipient = "Bob"
 message = "This is a message from group 2"
 data = recipient + "," + message
 
-port = 59859
+port = 54181
 url = "pets.ewi.utwente.nl"
 
 PK1 = getPK("key_files/public-key-mix-1.pem")
 PK2 = getPK("key_files/public-key-mix-2.pem")
 PK3 = getPK("key_files/public-key-mix-3.pem")
 
-E1 = layer(PK3, data)
-E2 = layer(PK2, E1)
-E3 = layer(PK1, E2)
+# E1 = layer(PK3, data)
+# E2 = layer(PK2, E1)
+
+result = PK3.public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.PKCS1)
+print(result.decode("utf-8"))
+
+E3 = layer(PK1, bytes("This is some data", 'utf-8'))
 
 length = bytearray.fromhex('{:08x}'.format(len(E3)))
 network_message = length + E3
@@ -90,10 +95,9 @@ except:
 print(data)
 
 if data == b'\x06':
-	print("Error")
+	print("Message corectly recieved by Server")
 else:
-	print("Succes")
-
+	print("Failed to correctly send message")
 
 
 print("Done!")
