@@ -1,6 +1,5 @@
 import base64
 
-import pem
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
@@ -8,50 +7,52 @@ from cryptography.hazmat.primitives import padding as pad
 import os
 import requests
 
+import socket
+
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 
 def getPK(Path):
-	with open(Path, "rb") as key_file:
-		PK = serialization.load_pem_public_key(
-			key_file.read(),
-			backend=default_backend()
-		)
-	if isinstance(PK, rsa.RSAPublicKey):
-		return PK
-	else:
-		return None
+    with open(Path, "rb") as key_file:
+        PK = serialization.load_pem_public_key(
+            key_file.read(),
+            backend=default_backend()
+        )
+    if isinstance(PK, rsa.RSAPublicKey):
+        return PK
+    else:
+        return None
 
 
 def layer(PK, data):
-	key1 = os.urandom(16)
-	iv1 = os.urandom(16)
-	Key_iv1 = key1 + iv1
+    key1 = os.urandom(16)
+    iv1 = os.urandom(16)
+    Key_iv1 = key1 + iv1
 
-	cipher = Cipher(algorithms.AES(key1), modes.CBC(iv1), backend=default_backend())
-	encryptor = cipher.encryptor()
+    cipher = Cipher(algorithms.AES(key1), modes.CBC(iv1), backend=default_backend())
+    encryptor = cipher.encryptor()
 
 
 
-	if isinstance(data, str):
-		padder = pad.PKCS7(algorithms.AES.block_size).padder()
-		padded_data = padder.update(str.encode(data)) + padder.finalize()
-		AES_ct = encryptor.update(padded_data) + encryptor.finalize()
-	else:
-		padder = pad.PKCS7(algorithms.AES.block_size).padder()
-		padded_data = padder.update(data) + padder.finalize()
-		AES_ct = encryptor.update(padded_data) + encryptor.finalize()
+    if isinstance(data, str):
+        padder = pad.PKCS7(algorithms.AES.block_size).padder()
+        padded_data = padder.update(str.encode(data)) + padder.finalize()
+        AES_ct = encryptor.update(padded_data) + encryptor.finalize()
+    else:
+        padder = pad.PKCS7(algorithms.AES.block_size).padder()
+        padded_data = padder.update(data) + padder.finalize()
+        AES_ct = encryptor.update(padded_data) + encryptor.finalize()
 
-	RSA_ct = PK.encrypt(
-		Key_iv1,
-		padding.OAEP(
-			mgf=padding.MGF1(algorithm=hashes.SHA256()),
-			algorithm=hashes.SHA256(),
-			label=None
-		)
-	)
+    RSA_ct = PK.encrypt(
+        Key_iv1,
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None
+        )
+    )
 
-	return RSA_ct + AES_ct
+    return RSA_ct + AES_ct
 
 
 
@@ -77,8 +78,13 @@ network_message = length + E3
 
 print('network_message:', ''.join('{: 02x}'.format(x) for x in network_message))
 
-r = requests.post("http://bugs.python.org", data=network_message, stream=True)
-print(r.status_code, r.reason)
-print(r.raw.read(100))
+# r = requests.post("http://bugs.python.org", data=network_message, stream=True)
+# print(r.status_code, r.reason)
+# print(r.raw.read(100))
+
+
+clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+clientsocket.connect(('pets.ewi.utwente.nl', 56180))
+clientsocket.send(network_message)
 
 print("Done!")
