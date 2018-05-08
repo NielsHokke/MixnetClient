@@ -4,12 +4,31 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import padding as pad
-import os
-import requests
-
-import socket
-
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+import socket
+import os
+
+
+def sendToServer(url, port, data):
+
+	length = bytearray.fromhex('{:08x}'.format(len(data)))
+	network_message = length + data
+
+	try:
+		clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		clientsocket.connect((url, port))
+		clientsocket.send(network_message)
+		data = clientsocket.recv(32)
+	except:
+		print("Failed to connect to server")
+		exit(0)
+
+	print(data)
+
+	if data == b'\x06':
+		print("Message corectly recieved by Server")
+	else:
+		print("Failed to correctly send message")
 
 
 def getPK(Path):
@@ -63,41 +82,18 @@ recipient = "Bob"
 message = "This is a message from group 2"
 data = recipient + "," + message
 
-port = 54181
-url = "pets.ewi.utwente.nl"
-
 PK1 = getPK("key_files/public-key-mix-1.pem")
 PK2 = getPK("key_files/public-key-mix-2.pem")
 PK3 = getPK("key_files/public-key-mix-3.pem")
 
+# result = PK3.public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.PKCS1)
+# print(result.decode("utf-8"))
+
 # E1 = layer(PK3, data)
 # E2 = layer(PK2, E1)
-
-result = PK3.public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.PKCS1)
-print(result.decode("utf-8"))
-
 E3 = layer(PK1, bytes("This is some data", 'utf-8'))
 
-length = bytearray.fromhex('{:08x}'.format(len(E3)))
-network_message = length + E3
-
-# print('network_message:', ''.join('{: 02x}'.format(x) for x in network_message))
-
-try:
-	clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	clientsocket.connect((url, port))
-	clientsocket.send(network_message)
-	data = clientsocket.recv(32)
-except:
-	print("Failed to connect to server")
-	exit(0)
-
-print(data)
-
-if data == b'\x06':
-	print("Message corectly recieved by Server")
-else:
-	print("Failed to correctly send message")
+sendToServer("pets.ewi.utwente.nl", 54181, E3)
 
 
 print("Done!")
