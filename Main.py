@@ -4,6 +4,12 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import padding as pad
+
+from Cryptodome.Cipher import PKCS1_OAEP
+from Cryptodome.PublicKey import RSA
+
+
+
 import os
 import requests
 
@@ -32,6 +38,11 @@ def layer(PK, data):
 
 	cipher = Cipher(algorithms.AES(key1), modes.CBC(iv1), backend=default_backend())
 	encryptor = cipher.encryptor()
+
+	message = b'You can attack now!'
+	key = RSA.importKey(open('public.pem').read())
+	cipher = PKCS1_OAEP.new(key)
+	ciphertext = cipher.encrypt(message)
 
 	if isinstance(data, str):
 		padder = pad.PKCS7(algorithms.AES.block_size).padder()
