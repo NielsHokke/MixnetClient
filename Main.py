@@ -39,10 +39,6 @@ def layer(PK, data):
 	cipher = Cipher(algorithms.AES(key1), modes.CBC(iv1), backend=default_backend())
 	encryptor = cipher.encryptor()
 
-	message = b'You can attack now!'
-	key = RSA.importKey(open('public.pem').read())
-	cipher = PKCS1_OAEP.new(key)
-	ciphertext = cipher.encrypt(message)
 
 	if isinstance(data, str):
 		padder = pad.PKCS7(algorithms.AES.block_size).padder()
@@ -53,14 +49,19 @@ def layer(PK, data):
 		padded_data = padder.update(data) + padder.finalize()
 		AES_ct = encryptor.update(padded_data) + encryptor.finalize()
 
-	RSA_ct = PK.encrypt(
-		IV_KEY,
-		padding.OAEP(
-			mgf=padding.MGF1(algorithm=hashes.SHA256()),
-			algorithm=hashes.SHA256(),
-			label=None
-		)
-	)
+	# RSA_ct = PK.encrypt(
+	# 	IV_KEY,
+	# 	padding.OAEP(
+	# 		mgf=padding.MGF1(algorithm=hashes.SHA256()),
+	# 		algorithm=hashes.SHA256(),
+	# 		label=None
+	# 	)
+	# )
+
+	key = RSA.importKey(open(PK).read())
+	print(key)
+	cipher = PKCS1_OAEP.new(key)
+	RSA_ct = cipher.encrypt(IV_KEY)
 
 	print(len(RSA_ct))
 	print('RSA_ct:', ''.join('{: 02x}'.format(x) for x in RSA_ct))
@@ -70,24 +71,20 @@ def layer(PK, data):
 
 print("Starting")
 
-recipient = "Bob"
+recipient = "hendrik ido ambacht"
 message = "This is a message from group 2"
 data = recipient + "," + message
 
-port = 54181
+port = 59766
 url = "pets.ewi.utwente.nl"
 
-PK1 = getPK("key_files/public-key-mix-1.pem")
-PK2 = getPK("key_files/public-key-mix-2.pem")
-PK3 = getPK("key_files/public-key-mix-3.pem")
+PK1 = "key_files/public-key-mix-1.pem"
+PK2 = "key_files/public-key-mix-2.pem"
+PK3 = "key_files/public-key-mix-3.pem"
 
-# E1 = layer(PK3, data)
-# E2 = layer(PK2, E1)
-
-result = PK3.public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.PKCS1)
-print(result.decode("utf-8"))
-
-E3 = layer(PK1, bytes("This is some data", 'utf-8'))
+E1 = layer(PK3, data)
+E2 = layer(PK2, E1)
+E3 = layer(PK1, E2)
 
 length = bytearray.fromhex('{:08x}'.format(len(E3)))
 network_message = length + E3
