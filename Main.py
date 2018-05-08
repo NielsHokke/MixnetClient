@@ -64,8 +64,8 @@ def layer(PK, data):
 	RSA_ct = PK.encrypt(
 		IV_KEY,
 		padding.OAEP(
-			mgf=padding.MGF1(algorithm=hashes.SHA256()),
-			algorithm=hashes.SHA256(),
+			mgf=padding.MGF1(algorithm=hashes.SHA1()),
+			algorithm=hashes.SHA1(),
 			label=None
 		)
 	)
@@ -78,7 +78,7 @@ def layer(PK, data):
 
 print("Starting")
 
-recipient = "Bob"
+recipient = "NHokke"
 message = "This is a message from group 2"
 data = recipient + "," + message
 
@@ -86,14 +86,11 @@ PK1 = getPK("key_files/public-key-mix-1.pem")
 PK2 = getPK("key_files/public-key-mix-2.pem")
 PK3 = getPK("key_files/public-key-mix-3.pem")
 
-# result = PK3.public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.PKCS1)
-# print(result.decode("utf-8"))
+E1 = layer(PK3, data)
+E2 = layer(PK2, E1)
+E3 = layer(PK1, E2)
 
-# E1 = layer(PK3, data)
-# E2 = layer(PK2, E1)
-E3 = layer(PK1, bytes("This is some data", 'utf-8'))
-
-sendToServer("pets.ewi.utwente.nl", 54181, E3)
+sendToServer("pets.ewi.utwente.nl", 59766, E3)
 
 
 print("Done!")
