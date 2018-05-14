@@ -1,5 +1,6 @@
 import base64
 
+import requests
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
@@ -7,7 +8,8 @@ from cryptography.hazmat.primitives import padding as pad
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 import socket
 import os
-
+import time
+import urllib.request
 
 def sendToServer(url, port, data):
 
@@ -21,12 +23,13 @@ def sendToServer(url, port, data):
 		data = clientsocket.recv(32)
 	except:
 		print("Failed to connect to server")
-		exit(0)
+		# exit(0)
 
-	print(data)
+	# print(data)
 
 	if data == b'\x06':
-		print("Message corectly recieved by Server")
+		pass
+		# print("Message corectly recieved by Server")
 	else:
 		print("Failed to correctly send message")
 
@@ -70,27 +73,58 @@ def layer(PK, data):
 		)
 	)
 
-	print(len(RSA_ct))
-	print('RSA_ct:', ''.join('{: 02x}'.format(x) for x in RSA_ct))
-
 	return RSA_ct + AES_ct
 
 
 print("Starting")
 
-recipient = "NHokke"
-message = "This is a message from group 2"
-data = recipient + "," + message
+inside = []
+fh = open("result.csv", "w")
 
-PK1 = getPK("key_files/public-key-mix-1.pem")
-PK2 = getPK("key_files/public-key-mix-2.pem")
-PK3 = getPK("key_files/public-key-mix-3.pem")
 
-E1 = layer(PK3, data)
-E2 = layer(PK2, E1)
-E3 = layer(PK1, E2)
+print("In; out; inside; delivered")
+fh.write("In; out; inside; delivered \n")
+for x in range(1,300 + 1):
+	delivered = []
+	recipient = "NHokke"
+	message = str(x)
+	data = recipient + "," + message
+	inside.append(x)
 
-sendToServer("pets.ewi.utwente.nl", 59766, E3)
+	PK1 = getPK("key_files/public-key-mix-1.pem")
+	PK2 = getPK("key_files/public-key-mix-2.pem")
+	PK3 = getPK("key_files/public-key-mix-3.pem")
 
+	E1 = layer(PK3, data)
+	E2 = layer(PK2, E1)
+	E3 = layer(PK1, E2)
+
+	# print("Sending mesage: " + str(x))
+	sendToServer("pets.ewi.utwente.nl", 56314 , E3)
+
+	csv_url = 'https://pets.ewi.utwente.nl/log/2-uF6YF+Z9iMjHXW7wLdiwXo3MeKPaKp4xbSq/BqBzFnU=/exit.csv'
+
+	outlog = urllib.request.urlopen(csv_url).read().decode("utf-8").split('\n')
+	# print(outlog)
+
+	for fullrow in outlog:
+		row = fullrow.split(",")
+		try:
+			if "log" in row[0]:
+				pass
+			elif "PET" in row[1]:
+				delivered.append('pet')
+			else:
+				out = int(row[2])
+				inside = [x for x in inside if x != out]
+				delivered.append(out)
+		except:
+			pass
+
+	line = '{} ; {}; {} ; {} \n'.format(x, len(delivered), inside, delivered)
+	print(line)
+	fh.write(line)
+	time.sleep(0.1)
+	# print("\n")
 
 print("Done!")
